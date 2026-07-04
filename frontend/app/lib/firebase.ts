@@ -85,6 +85,7 @@ export interface Conversation {
   members: string[]; // emails granted access (read/write)
   createdAt: any;
   updatedAt: any;
+  backendSessionId?: string;
 }
 
 export interface Attachment {
@@ -135,7 +136,8 @@ export async function saveMessage(
   ownerPhoto: string | null,
   conversationId: string,
   message: Message,
-  title?: string
+  title?: string,
+  backendSessionId?: string
 ) {
   const db = getDb();
   const conversationRef = doc(db, `conversations-v2/${conversationId}`);
@@ -170,6 +172,7 @@ export async function saveMessage(
       messages: [cleanMessage],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      ...(backendSessionId && { backendSessionId }),
     });
   } else {
     await updateDoc(conversationRef, {

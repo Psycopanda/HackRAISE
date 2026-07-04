@@ -5,6 +5,16 @@ from database import sessions_collection, messages_collection, files_collection
 from langchain_mistralai import ChatMistralAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
+def _coerce_to_text(value) -> str:
+    """The LLM is expected to return a plain string for chat content, but
+    doesn't always honor the schema. Flatten anything else to text so
+    downstream consumers (Firestore, ReactMarkdown) never choke on it."""
+    if isinstance(value, str):
+        return value
+    if value is None:
+        return ""
+    return json.dumps(value, ensure_ascii=False)
+
 class SystemAgent:
     """Agent temporaire chargé de cadrer le projet et de générer le Master Context."""
     def __init__(self, session_id: str, agent_id: str):
@@ -74,7 +84,7 @@ class SystemAgent:
             mistral_json = json.loads(response.content)
             
             if mistral_json.get("status") == "interviewing":
-                ai_reply = mistral_json.get("content")
+                ai_reply = _coerce_to_text(mistral_json.get("content"))
                 await self._persist_message(role="assistant", content=ai_reply)
                 return {"status": "interviewing", "message": ai_reply}
             
@@ -153,8 +163,8 @@ class PersonalAgent:
             
             if mistral_response.get("type") == "action":
                 return await self._try_execute_action(mistral_response)
-                
-            ai_reply = mistral_response.get("content", "Je n'ai pas pu analyser votre demande.")
+
+            ai_reply = _coerce_to_text(mistral_response.get("content", "Je n'ai pas pu analyser votre demande."))
             await self._persist_message(role="assistant", content=ai_reply)
             return {"status": "chat", "message": ai_reply}
         except Exception:

@@ -11,7 +11,6 @@
   "dependencies": {
     "firebase": "^12.15.0",
     "next": "16.2.10",
-    "openai": "^6.45.0",
     "pdfjs-dist": "^6.1.200",
     "pixelarticons": "^2.2.0",
     "react": "19.2.4",

@@ -3,11 +3,6 @@ uvicorn
 motor
 langchain-mistralai
 langchain-classic
-database
-pydantic
-json
-asyncio
-urllib
-datetime
 langchain-core
-typing
+pydantic
+python-dotenv

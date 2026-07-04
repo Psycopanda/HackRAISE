@@ -1,6 +1,10 @@
 import uuid
 import json
 import asyncio
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, status
 from pydantic import BaseModel
 from database import sessions_collection, files_collection
@@ -45,6 +49,17 @@ class ConnectionManager:
                     pass
 
 manager = ConnectionManager()
+
+def merge_attachments_into_message(message: str, attachments: list) -> str:
+    """Inline any uploaded document text into the prompt sent to the LLM."""
+    docs_text = "\n\n".join(
+        f"[Document joint: {att.get('filename', 'fichier')}]\n{att.get('textContent', '')}"
+        for att in attachments
+        if att.get("textContent")
+    )
+    if not docs_text:
+        return message
+    return f"{message}\n\n{docs_text}" if message else docs_text
 
 class InitSessionResponse(BaseModel):
     session_code: str
@@ -110,7 +125,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, client_id: s
             # --- FLUX INITIALIZATION : Dialogue exclusif créateur <-> Système ---
             if is_initializing:
                 if action_type == "agent_chat":
-                    user_msg = data.get("message", "")
+                    user_msg = merge_attachments_into_message(
+                        data.get("message", ""), data.get("attachments") or []
+                    )
                     agent_res = await system_agent.interact(user_msg)
                     
                     if agent_res["status"] == "interviewing":
@@ -165,7 +182,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, client_id: s
                     })
                     
                 elif action_type == "agent_chat":
-                    user_msg = data.get("message", "")
+                    user_msg = merge_attachments_into_message(
+                        data.get("message", ""), data.get("attachments") or []
+                    )
                     agent_response = await personal_agent.interact(user_msg)
                     
                     # L'agent a réussi à poser un verrou sur le fichier cible

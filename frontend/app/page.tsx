@@ -27,6 +27,7 @@ import {
   type Conversation,
   type Message,
 } from "@/app/lib/firebase";
+import { initSession, connectSessionSocket, type BackendEvent } from "@/app/lib/backend";
 
 export default function ChatPage() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -45,9 +46,13 @@ export default function ChatPage() {
   const [shareConvoId, setShareConvoId] = useState<string | null>(null);
   const [shareEmail, setShareEmail] = useState("");
   const [shareStatus, setShareStatus] = useState<string | null>(null);
-  const [attachments, setAttachments] = useState<Array<{type: string; data: string; filename: string; mimeType: string}>>([]);
+  const [attachments, setAttachments] = useState<Array<{type: string; data: string; filename: string; mimeType: string; textContent?: string}>>([]);
+  const [backendSessionId, setBackendSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const wsSessionRef = useRef<string | null>(null);
+  const pendingReplyRef = useRef<(() => void) | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -106,16 +111,124 @@ export default function ChatPage() {
     return () => unsubscribe();
   }, []);
 
-  const handleNewChat = () => {
-    setCurrentConversationId(null);
+  // Opens the backend WebSocket for a given conversation + session, wiring up
+  // the message handler that persists agent replies to Firestore. One live
+  // socket == one live SystemAgent/PersonalAgent on the backend, so it must
+  // be reused across messages rather than reopened per-send.
+  const openSocket = (convoId: string, sessionCode: string): Promise<void> => {
+    if (wsRef.current && wsSessionRef.current !== sessionCode) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
+
+    const ws = connectSessionSocket(sessionCode, userId!);
+    wsSessionRef.current = sessionCode;
+    ws.onmessage = (event) => {
+      try {
+        const data: BackendEvent = JSON.parse(event.data);
+        if (data.event === "agent_reply" || data.event === "session_activated") {
+          if (userId && userEmail) {
+            saveMessage(
+              userId,
+              userEmail,
+              userName,
+              userPhoto,
+              convoId,
+              {
+                role: "assistant",
+                content: data.message,
+                createdAt: new Date(),
+                authorName: "AI",
+                authorEmail: "ai@assistant.local",
+              },
+              undefined,
+              sessionCode
+            );
+          }
+          pendingReplyRef.current?.();
+          pendingReplyRef.current = null;
+        }
+      } catch (err) {
+        console.error("Failed to parse backend event:", err);
+      }
+    };
+    wsRef.current = ws;
+    return new Promise<void>((resolve, reject) => {
+      ws.onopen = () => resolve();
+      ws.onerror = () => reject(new Error("Backend WebSocket connection failed"));
+    });
+  };
+
+  // Ensures a backend session + socket exist for a conversation, creating a
+  // new session only if one doesn't already exist (lazy fallback path).
+  const ensureSession = async (
+    convoId: string,
+    existingSessionId: string | null
+  ): Promise<string> => {
+    let sessionCode = existingSessionId;
+
+    if (wsRef.current && wsSessionRef.current === sessionCode && wsRef.current.readyState === WebSocket.OPEN) {
+      return sessionCode!;
+    }
+
+    if (!sessionCode) {
+      const init = await initSession();
+      sessionCode = init.session_code;
+      setBackendSessionId(sessionCode);
+    }
+
+    await openSocket(convoId, sessionCode);
+    return sessionCode;
+  };
+
+  const closeSession = () => {
+    wsRef.current?.close();
+    wsRef.current = null;
+    wsSessionRef.current = null;
+    pendingReplyRef.current = null;
+  };
+
+  // Close the backend socket when the component unmounts
+  useEffect(() => {
+    return () => closeSession();
+  }, []);
+
+  const handleNewChat = async () => {
+    closeSession();
+    const convoId = uuidv4();
+    setCurrentConversationId(convoId);
     setMessages([]);
     setInput("");
+    setBackendSessionId(null);
+
+    if (!userId) return;
+    try {
+      const init = await initSession();
+      setBackendSessionId(init.session_code);
+      await openSocket(convoId, init.session_code);
+    } catch (err) {
+      console.error("Failed to start backend session:", err);
+    }
   };
 
   const handleSelectConversation = async (convoId: string) => {
     if (!userId) return;
+    closeSession();
+    const convo = conversations.find((c) => c.id === convoId);
+    const sessionId = convo?.backendSessionId ?? null;
+    setBackendSessionId(sessionId);
     setCurrentConversationId(convoId);
     setInput("");
+
+    if (sessionId) {
+      ensureSession(convoId, sessionId).catch((err) =>
+        console.error("Failed to reconnect backend session:", err)
+      );
+    }
 
     // Subscribe to real-time message updates
     const unsubscribe = subscribeToMessages(convoId, (messages) => {
@@ -165,60 +278,42 @@ export default function ChatPage() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const messageToSend = input;
     setInput("");
     setAttachments([]);
     setIsStreaming(true);
 
-    // Save user message to Firestore
-    await saveMessage(userId, userEmail, userName, userPhoto, convoId, userMessage, input.slice(0, 50));
-
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [
-            ...messages.map((m) => ({
-              role: m.role,
-              content: m.content,
-              ...(m.attachments && { attachments: m.attachments }),
-              ...(m.authorEmail && { authorEmail: m.authorEmail }),
-              ...(m.authorName && { authorName: m.authorName }),
-              ...(m.authorPhoto && { authorPhoto: m.authorPhoto }),
-            })),
-            { role: "user", content: input, attachments },
-          ],
-          userId,
-          userEmail,
-          userName,
-          userPhoto,
-          conversationId: convoId,
-        }),
+      const sessionCode = await ensureSession(convoId, backendSessionId);
+
+      // Save user message to Firestore. Passing the backend session id here is
+      // only used the first time this conversation's doc is created; it's a
+      // no-op on subsequent messages.
+      await saveMessage(
+        userId,
+        userEmail,
+        userName,
+        userPhoto,
+        convoId,
+        userMessage,
+        messageToSend.slice(0, 50),
+        sessionCode
+      );
+
+      const docAttachments = attachments
+        .filter((att) => att.textContent)
+        .map((att) => ({ filename: att.filename, textContent: att.textContent }));
+
+      await new Promise<void>((resolve) => {
+        pendingReplyRef.current = resolve;
+        wsRef.current!.send(
+          JSON.stringify({
+            action: "agent_chat",
+            message: messageToSend,
+            attachments: docAttachments.length > 0 ? docAttachments : undefined,
+          })
+        );
       });
-
-      if (!response.body) throw new Error("No response body");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = "";
-
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        assistantContent += chunk;
-
-        setMessages((prev) => {
-          const updated = [...prev];
-          if (updated[updated.length - 1]?.role === "assistant") {
-            updated[updated.length - 1].content = assistantContent;
-          }
-          return updated;
-        });
-      }
 
       // Reload conversations to show updated timestamps
       const updatedConvos = await loadConversations(userEmail);
@@ -563,7 +658,7 @@ export default function ChatPage() {
                   >
                     <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-headings:my-2">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.content}
+                        {typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}
                       </ReactMarkdown>
                     </div>
                     {msg.attachments && msg.attachments.length > 0 && (
