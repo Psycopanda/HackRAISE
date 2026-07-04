@@ -12,3 +12,4 @@ db = client.vibecode_db
 # Collections
 sessions_collection = db.sessions
 files_collection = db.files
+messages_collection = db.messages

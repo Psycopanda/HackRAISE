@@ -1,32 +1,30 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from pydantic import BaseModel
 import uuid
 import json
-
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from pydantic import BaseModel
 from database import sessions_collection, files_collection
 from ws_manager import manager
-from agent_service import process_personal_agent_interaction
+from agent_service import PersonalAgent
 
-app = FastAPI(title="VibeCode Backend API")
-
+app = FastAPI(title="VibeCode Backend Core API")
 
 class InitSessionRequest(BaseModel):
     initial_prompt: str
 
-
 @app.post("/sessions/init")
 async def initialize_session(req: InitSessionRequest):
     """
-    Phase 1 : L'utilisateur initie le projet. L'agent système crée le Master Context.
+    Phase d'initialisation : Génère le Master Context initial à partir des directives
+    de l'agent système et prépare l'environnement de la session.
     """
-    # MOCK: L'agent système de Mistral génèrerait ce JSON après quelques échanges
+    session_code = str(uuid.uuid4())[:8].upper()
+    
+    # Structure initiale du document de session (Master & Dynamic)
     master_context = {
-        "project_goal": "Rédaction d'un exposé sur l'IA collaborative",
-        "parameters": {"language": "fr", "tone": "academic"}
+        "project_goal": f"Création conjointe basée sur le prompt : {req.initial_prompt}",
+        "parameters": {"language": "fr", "mode": "text_collaboration"}
     }
-
-    session_code = str(uuid.uuid4())[:8]  # Code d'accès unique
-
+    
     await sessions_collection.insert_one({
         "_id": session_code,
         "master_context": master_context,
@@ -36,62 +34,82 @@ async def initialize_session(req: InitSessionRequest):
         },
         "version": 1
     })
-
-    # Création du fichier vierge initial
+    
+    # Création du document texte partagé initial pour la zone de gauche
     await files_collection.insert_one({
         "session_id": session_code,
         "filename": "document_principal.txt",
-        "content": "",
+        "content": "Bienvenue dans votre espace collaboratif VibeCode.\n",
         "version": 1
     })
-
+    
     return {"session_code": session_code, "master_context": master_context}
-
 
 @app.websocket("/ws/{session_id}/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str, client_id: str):
     """
-    Phase 2 : Collaboration en temps réel (Humains + Agents)
+    Passerelle de communication temps réel. Centralise les frappes de texte (gauche)
+    et le chat avec l'agent IA personnel (droite).
     """
     await manager.connect(websocket, session_id)
+    
+    # Instanciation de l'agent dédié pour ce canal WebSocket
+    agent = PersonalAgent(session_id=session_id, agent_id=client_id)
+    
     try:
         while True:
-            data_str = await websocket.receive_text()
-            data = json.loads(data_str)
-
+            raw_data = await websocket.receive_text()
+            data = json.loads(raw_data)
             action_type = data.get("action")
-
-            # Gestion des modifications humaines en temps réel (OCC géré en frontend/backend)
+            
+            # --- ZONE GAUCHE : Édition collaborative du texte ---
             if action_type == "text_update":
-                # On broadcast la modif aux autres pour le rendu gauche de l'interface
+                target_file = data.get("filename", "document_principal.txt")
+                new_content = data.get("content", "")
+                
+                # Mise à jour globale du fichier dans MongoDB
+                await files_collection.update_one(
+                    {"session_id": session_id, "filename": target_file},
+                    {"$set": {"content": new_content}, "$inc": {"version": 1}}
+                )
+                
+                # Broadcast de la modification à tous les autres terminaux connectés
                 await manager.broadcast_to_session(session_id, {
                     "event": "file_modified",
                     "client_id": client_id,
-                    "content": data.get("content")
+                    "filename": target_file,
+                    "content": new_content
                 })
-
-            # Gestion de la discussion avec l'agent personnel (Interface droite)
+                
+            # --- ZONE DROITE : Interaction Chat & Agent IA ---
             elif action_type == "agent_chat":
-                user_msg = data.get("message")
-
-                # Traitement de la logique conditionnelle de l'agent
-                agent_response = await process_personal_agent_interaction(session_id, client_id, user_msg)
-
+                user_msg = data.get("message", "")
+                
+                # Sollicitation de la logique de l'agent
+                agent_response = await agent.interact(user_msg)
+                
                 if agent_response["status"] == "intent_locked":
-                    # Broadcast à tous que le contexte dynamique a changé (mise à jour UI potentielle)
+                    # Alerte globale : Un agent s'est emparé d'une tâche
                     await manager.broadcast_to_session(session_id, {
                         "event": "context_updated",
-                        "message": f"Agent de {client_id} a verrouillé une tâche."
+                        "message": f"L'agent de l'utilisateur {client_id} a verrouillé le fichier '{agent_response['target_file']}'."
                     })
-
-                    # L'agent commence son travail asynchrone ici, modifie le fichier, puis déverrouille (non implémenté ici pour concision)
-
-                # Réponse dans le chat privé de l'utilisateur
+                    
+                    # NOTE : Le traitement autonome en tâche de fond de l'agent (modification effective 
+                    # du fichier, écriture du log et libération du verrou) s'exécute à la suite de cette étape.
+                
+                # Envoi immédiat de la réponse textuelle dans le panneau droit de l'utilisateur
                 await websocket.send_text(json.dumps({
                     "event": "agent_reply",
+                    "status": agent_response["status"],
                     "message": agent_response["message"]
                 }))
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, session_id)
-        await manager.broadcast_to_session(session_id, {"event": "user_left", "client_id": client_id})
+        # Nettoyage automatique : Libération des verrous de l'agent pour éviter les blocages permanents
+        await agent.release_all_intents()
+        await manager.broadcast_to_session(session_id, {
+            "event": "user_left",
+            "client_id": client_id
+        })
