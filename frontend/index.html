@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VibeCode</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <!-- Notifications (non-blocking) -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- ============================ VIEW: HOME ============================ -->
+    <section id="view-home" class="view view--center">
+      <div class="home-card">
+        <div class="brand">
+          <div class="brand__logo" aria-hidden="true">VC</div>
+          <h1 class="brand__title">VibeCode</h1>
+          <p class="brand__subtitle">
+            Collaboration en temps réel — humains et agents IA.
+          </p>
+        </div>
+
+        <button id="btn-create" class="btn btn--primary btn--block">
+          Créer une nouvelle session
+        </button>
+
+        <div class="divider"><span>ou</span></div>
+
+        <form id="form-join" class="join" novalidate>
+          <label class="field">
+            <span class="field__label">Code PIN</span>
+            <input
+              id="input-pin"
+              class="input"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Ex. A1B2C3"
+              maxlength="12"
+            />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Pseudo <span class="req">*</span></span>
+            <input
+              id="input-pseudo"
+              class="input"
+              type="text"
+              autocomplete="off"
+              placeholder="Votre pseudo"
+              maxlength="40"
+            />
+          </label>
+
+          <button type="submit" class="btn btn--secondary btn--block">
+            Rejoindre la session
+          </button>
+          <p id="join-error" class="form-error" role="alert"></p>
+        </form>
+      </div>
+      <footer class="home-footer">VibeCode · Hackathon</footer>
+    </section>
+
+    <!-- ======================= VIEW: CREATE SESSION ====================== -->
+    <section id="view-create" class="view view--center hidden">
+      <div class="chat-window">
+        <header class="chat-window__header">
+          <button id="btn-create-back" class="icon-btn" title="Retour" aria-label="Retour">←</button>
+          <div class="chat-window__heading">
+            <h2 class="chat-window__title">Initialisation de la session</h2>
+            <p class="chat-window__hint">
+              Discutez avec l'agent système pour définir le master context.
+            </p>
+          </div>
+        </header>
+
+        <div id="create-messages" class="messages"></div>
+
+        <div id="create-status" class="typing hidden" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+
+        <!-- PIN panel (revealed when the master context is ready) -->
+        <div id="pin-panel" class="pin-panel hidden">
+          <p class="pin-panel__label">Session prête. Partagez ce code :</p>
+          <div class="pin-panel__code">
+            <span id="pin-value" class="pin-code">------</span>
+            <button id="btn-copy-pin" class="btn btn--ghost btn--sm">Copier</button>
+          </div>
+          <p id="pin-summary" class="pin-panel__summary hidden"></p>
+          <form id="form-enter" class="pin-panel__enter" novalidate>
+            <input
+              id="input-creator-pseudo"
+              class="input"
+              type="text"
+              placeholder="Votre pseudo"
+              maxlength="40"
+            />
+            <button type="submit" class="btn btn--primary">Entrer dans l'atelier</button>
+          </form>
+        </div>
+
+        <form id="form-create-chat" class="composer">
+          <textarea
+            id="create-input"
+            class="composer__input"
+            rows="1"
+            placeholder="Écrivez votre message..."
+          ></textarea>
+          <button type="submit" class="composer__send" title="Envoyer" aria-label="Envoyer">↑</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ======================= VIEW: WORKSPACE =========================== -->
+    <section id="view-workspace" class="view hidden">
+      <div class="ws">
+        <!-- Top bar: session code, available anytime to invite collaborators -->
+        <div class="ws-topbar">
+          <div class="ws-topbar__left">
+            <span class="ws-logo">VibeCode</span>
+            <span class="ws-title" id="ws-title"></span>
+          </div>
+          <div class="ws-topbar__right">
+            <span class="ws-code-label">Code&nbsp;:</span>
+            <code class="ws-code" id="ws-code">------</code>
+            <button class="btn btn--ghost btn--sm" id="btn-copy-code">Copier &amp; inviter</button>
+          </div>
+        </div>
+
+        <div class="workspace" id="workspace">
+          <!-- LEFT: shared multi-file project editor -->
+          <div class="pane pane--editor" id="pane-editor">
+            <div class="editor-toolbar">
+              <button class="icon-btn" id="btn-toggle-explorer" title="Explorateur de fichiers" aria-label="Explorateur">☰</button>
+              <div class="menu" id="new-menu">
+                <button class="icon-btn icon-btn--plus" id="btn-new" title="Nouveau fichier ou dossier" aria-label="Nouveau">+</button>
+                <div class="menu__list hidden" id="new-menu-list">
+                  <button type="button" class="menu__item" id="btn-new-file">Nouveau fichier</button>
+                  <button type="button" class="menu__item" id="btn-new-folder">Nouveau dossier</button>
+                </div>
+              </div>
+              <span class="editor-toolbar__spacer"></span>
+              <span class="pane__meta" id="editor-meta"></span>
+              <button class="btn btn--ghost btn--sm hidden" id="btn-preview">Aperçu</button>
+              <button class="btn btn--primary btn--sm" id="btn-save" disabled>Enregistrer</button>
+            </div>
+            <div class="editor-body">
+              <aside class="explorer" id="explorer" aria-label="Fichiers du projet"></aside>
+              <div class="editor-main">
+                <div class="tabs" id="tabs"></div>
+                <div id="proposal-strip" class="proposal-strip hidden"></div>
+                <div class="editor" id="editor-root">
+                  <textarea
+                    id="editor-textarea"
+                    class="editor__textarea"
+                    spellcheck="false"
+                    placeholder="Commencez à écrire… l'agent et les autres collaborateurs apparaîtront ici en temps réel."
+                  ></textarea>
+                  <div id="editor-preview" class="preview markdown-body hidden"></div>
+                  <div id="editor-diff" class="diffview hidden"></div>
+                </div>
+                <div id="proposal-bar" class="proposal-bar hidden">
+                  <span class="proposal-bar__label" id="proposal-bar-label"></span>
+                  <span class="editor-toolbar__spacer"></span>
+                  <button class="btn btn--ghost btn--sm" id="btn-proposal-later">Plus tard</button>
+                  <button class="btn btn--ghost btn--sm" id="btn-proposal-reject">Rejeter</button>
+                  <button class="btn btn--primary btn--sm" id="btn-proposal-apply">Appliquer</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resizable divider -->
+          <div
+            class="resizer"
+            id="resizer"
+            role="separator"
+            aria-orientation="vertical"
+            tabindex="0"
+            title="Redimensionner"
+          ></div>
+
+          <!-- RIGHT: private chat with the personal agent -->
+          <div class="pane pane--chat" id="pane-chat">
+            <header class="pane__header">
+              <span class="pane__title">Votre agent IA</span>
+              <span class="badge badge--muted" id="agent-indicator">en ligne</span>
+            </header>
+            <div id="workspace-messages" class="messages messages--chat"></div>
+            <div id="workspace-status" class="typing hidden" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <form id="form-workspace-chat" class="composer">
+              <textarea
+                id="workspace-input"
+                class="composer__input"
+                rows="1"
+                placeholder="Parlez à votre agent…"
+              ></textarea>
+              <button type="submit" class="composer__send" title="Envoyer" aria-label="Envoyer">↑</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

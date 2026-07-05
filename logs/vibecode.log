@@ -1,0 +1,76 @@
+2026-07-05 04:28:11,215 INFO    vibecode: Logging initialised -> /home/paul/Documents/Projets/TEST (3)/TEST/logs/vibecode.log
+2026-07-05 04:28:11,217 INFO    uvicorn.error: Started server process [82430]
+2026-07-05 04:28:11,217 INFO    uvicorn.error: Waiting for application startup.
+2026-07-05 04:28:12,191 INFO    vibecode.database: MongoDB connection established (database: vibecode)
+2026-07-05 04:28:12,191 INFO    uvicorn.error: Application startup complete.
+2026-07-05 04:28:16,034 INFO    uvicorn.error: 127.0.0.1:56796 - "WebSocket /ws/session/6a49bc23bf71b72d23ace8a9/6a49be56bf71b72d23ace8c7" [accepted]
+2026-07-05 04:28:16,034 INFO    uvicorn.error: connection open
+2026-07-05 04:28:16,072 INFO    vibecode.ws: session WS connected: session=6a49bc23bf71b72d23ace8a9 user=6a49be56bf71b72d23ace8c7 (ZEF)
+2026-07-05 04:28:22,912 INFO    uvicorn.access: 127.0.0.1:53558 - "GET / HTTP/1.1" 304
+2026-07-05 04:28:22,918 INFO    uvicorn.access: 127.0.0.1:53558 - "GET /css/styles.css HTTP/1.1" 200
+2026-07-05 04:28:22,919 INFO    uvicorn.access: 127.0.0.1:53566 - "GET /js/app.js HTTP/1.1" 304
+2026-07-05 04:28:22,923 INFO    uvicorn.access: 127.0.0.1:53566 - "GET /js/create.js HTTP/1.1" 200
+2026-07-05 04:28:22,923 INFO    uvicorn.access: 127.0.0.1:53558 - "GET /js/home.js HTTP/1.1" 304
+2026-07-05 04:28:22,924 INFO    uvicorn.access: 127.0.0.1:53582 - "GET /js/ui.js HTTP/1.1" 304
+2026-07-05 04:28:22,924 INFO    uvicorn.access: 127.0.0.1:53576 - "GET /js/workspace.js HTTP/1.1" 200
+2026-07-05 04:28:22,929 INFO    uvicorn.access: 127.0.0.1:53576 - "GET /js/api.js HTTP/1.1" 304
+2026-07-05 04:28:22,930 INFO    uvicorn.access: 127.0.0.1:53582 - "GET /js/config.js HTTP/1.1" 304
+2026-07-05 04:28:22,930 INFO    uvicorn.access: 127.0.0.1:53566 - "GET /js/socket.js HTTP/1.1" 304
+2026-07-05 04:28:22,931 INFO    uvicorn.access: 127.0.0.1:53558 - "GET /js/protocol.js HTTP/1.1" 304
+2026-07-05 04:28:22,931 INFO    uvicorn.access: 127.0.0.1:53586 - "GET /js/markdown.js HTTP/1.1" 200
+2026-07-05 04:28:22,932 INFO    uvicorn.access: 127.0.0.1:53590 - "GET /js/highlight.js HTTP/1.1" 200
+2026-07-05 04:28:22,933 INFO    uvicorn.access: 127.0.0.1:53576 - "GET /js/editor.js HTTP/1.1" 304
+2026-07-05 04:28:22,933 INFO    uvicorn.access: 127.0.0.1:53566 - "GET /js/resizer.js HTTP/1.1" 304
+2026-07-05 04:28:22,934 INFO    uvicorn.access: 127.0.0.1:53582 - "GET /js/explorer.js HTTP/1.1" 304
+2026-07-05 04:28:22,935 INFO    uvicorn.access: 127.0.0.1:53558 - "GET /js/diff.js HTTP/1.1" 304
+2026-07-05 04:28:23,008 INFO    vibecode.ws: session WS disconnected: session=6a49bc23bf71b72d23ace8a9 user=6a49be56bf71b72d23ace8c7
+2026-07-05 04:28:24,326 INFO    vibecode.session: session created: 6a49c14835bf8857cef8860f (creator=6a49c14835bf8857cef88610)
+2026-07-05 04:28:24,326 INFO    uvicorn.access: 127.0.0.1:53586 - "POST /api/sessions HTTP/1.1" 200
+2026-07-05 04:28:28,990 INFO    uvicorn.error: 127.0.0.1:53598 - "WebSocket /ws/system/6a49c14835bf8857cef8860f/6a49c14835bf8857cef88610" [accepted]
+2026-07-05 04:28:28,990 INFO    uvicorn.error: connection open
+2026-07-05 04:29:14,970 INFO    uvicorn.error: Shutting down
+2026-07-05 04:29:15,071 INFO    uvicorn.error: Waiting for application shutdown.
+2026-07-05 04:29:15,114 INFO    vibecode.database: MongoDB connection closed
+2026-07-05 04:29:15,114 INFO    uvicorn.error: Application shutdown complete.
+2026-07-05 04:29:15,114 INFO    uvicorn.error: Finished server process [82430]
+2026-07-05 04:29:16,789 INFO    vibecode: Logging initialised -> /home/paul/Documents/Projets/TEST (3)/TEST/logs/vibecode.log
+2026-07-05 04:29:16,791 INFO    uvicorn.error: Started server process [82603]
+2026-07-05 04:29:16,791 INFO    uvicorn.error: Waiting for application startup.
+2026-07-05 04:29:17,640 INFO    vibecode.database: MongoDB connection established (database: vibecode)
+2026-07-05 04:29:17,640 INFO    uvicorn.error: Application startup complete.
+2026-07-05 04:29:24,401 INFO    uvicorn.access: 127.0.0.1:44124 - "GET / HTTP/1.1" 304
+2026-07-05 04:29:24,407 INFO    uvicorn.access: 127.0.0.1:44124 - "GET /css/styles.css HTTP/1.1" 304
+2026-07-05 04:29:24,412 INFO    uvicorn.access: 127.0.0.1:44124 - "GET /js/workspace.js HTTP/1.1" 304
+2026-07-05 04:29:24,418 INFO    uvicorn.access: 127.0.0.1:44124 - "GET /js/markdown.js HTTP/1.1" 304
+2026-07-05 04:29:24,432 INFO    uvicorn.access: 127.0.0.1:44124 - "GET /js/highlight.js HTTP/1.1" 304
+2026-07-05 04:29:25,446 INFO    vibecode.session: session created: 6a49c185bced54dd7127d335 (creator=6a49c185bced54dd7127d336)
+2026-07-05 04:29:25,446 INFO    uvicorn.access: 127.0.0.1:44124 - "POST /api/sessions HTTP/1.1" 200
+2026-07-05 04:29:25,578 INFO    uvicorn.error: 127.0.0.1:44144 - "WebSocket /ws/system/6a49c185bced54dd7127d335/6a49c185bced54dd7127d336" [accepted]
+2026-07-05 04:29:25,578 INFO    uvicorn.error: connection open
+2026-07-05 04:29:43,558 INFO    httpx: HTTP Request: POST https://api.mistral.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-05 04:29:53,350 INFO    httpx: HTTP Request: POST https://api.mistral.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-05 04:29:53,842 INFO    vibecode.session: session finalized: 6a49c185bced54dd7127d335 access_code=ZP3SG4
+2026-07-05 04:29:58,664 INFO    vibecode.session: user joined: session=6a49c185bced54dd7127d335 user=6a49c1a6bced54dd7127d33d (paul)
+2026-07-05 04:29:58,664 INFO    uvicorn.access: 127.0.0.1:44136 - "POST /api/sessions/join HTTP/1.1" 200
+2026-07-05 04:29:58,741 INFO    uvicorn.error: 127.0.0.1:54686 - "WebSocket /ws/session/6a49c185bced54dd7127d335/6a49c1a6bced54dd7127d33d" [accepted]
+2026-07-05 04:29:58,741 INFO    uvicorn.error: connection open
+2026-07-05 04:29:58,776 INFO    vibecode.ws: session WS connected: session=6a49c185bced54dd7127d335 user=6a49c1a6bced54dd7127d33d (paul)
+2026-07-05 04:30:18,481 INFO    httpx: HTTP Request: POST https://api.mistral.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-05 04:30:25,851 INFO    httpx: HTTP Request: POST https://api.mistral.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-05 04:30:25,910 INFO    vibecode.modification: proposal created (modify): document.txt task=1fb467681b6f49c081032ac9eb671372 session=6a49c185bced54dd7127d335
+2026-07-05 04:30:28,310 INFO    vibecode.modification: proposal applied (modify): document.txt task=1fb467681b6f49c081032ac9eb671372 session=6a49c185bced54dd7127d335
+2026-07-05 04:30:53,487 INFO    httpx: HTTP Request: POST https://api.mistral.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-05 04:31:08,779 INFO    httpx: HTTP Request: POST https://api.mistral.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-05 04:31:08,832 INFO    vibecode.modification: proposal created (modify): document.txt task=dac1669ccf324ada9e92cf3481d0f8b9 session=6a49c185bced54dd7127d335
+2026-07-05 04:31:17,966 INFO    vibecode.modification: proposal applied (modify): document.txt task=dac1669ccf324ada9e92cf3481d0f8b9 session=6a49c185bced54dd7127d335
+2026-07-05 04:31:32,456 INFO    vibecode.ws: file created: main.py session=6a49c185bced54dd7127d335 by=6a49c1a6bced54dd7127d33d
+2026-07-05 04:31:59,240 INFO    vibecode.ws: manual save to context: main.py by=paul session=6a49c185bced54dd7127d335
+2026-07-05 04:32:14,690 INFO    vibecode.ws: user deleted path: document.txt (1 files) session=6a49c185bced54dd7127d335
+2026-07-05 04:32:16,745 INFO    vibecode.ws: user deleted path: main.py (1 files) session=6a49c185bced54dd7127d335
+2026-07-05 04:32:21,655 INFO    httpx: HTTP Request: POST https://api.mistral.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-07-05 04:33:00,230 INFO    uvicorn.error: Shutting down
+2026-07-05 04:33:00,311 INFO    vibecode.ws: session WS disconnected: session=6a49c185bced54dd7127d335 user=6a49c1a6bced54dd7127d33d
+2026-07-05 04:33:00,330 INFO    uvicorn.error: Waiting for application shutdown.
+2026-07-05 04:33:00,368 INFO    vibecode.database: MongoDB connection closed
+2026-07-05 04:33:00,368 INFO    uvicorn.error: Application shutdown complete.
+2026-07-05 04:33:00,369 INFO    uvicorn.error: Finished server process [82603]

@@ -1,3 +1,0 @@
-# HackRAISE
-hackathon
-azjehahez

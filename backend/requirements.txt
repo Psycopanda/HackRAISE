@@ -1,8 +1,0 @@
-fastapi
-uvicorn
-motor
-langchain-mistralai
-langchain-classic
-langchain-core
-pydantic
-python-dotenv
