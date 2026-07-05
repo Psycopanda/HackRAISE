@@ -9,13 +9,45 @@ export function initHome({ onCreate, onJoined }) {
   const pinInput = qs("#input-pin");
   const pseudoInput = qs("#input-pseudo");
   const errorEl = qs("#join-error");
+  const uploadBtn = qs("#btn-upload");
+  const uploadInput = qs("#input-upload");
+  const uploadStatus = qs("#upload-status");
+
+  let uploadedText = null;
+  let uploadedFilename = null;
+
+  uploadBtn.addEventListener("click", () => uploadInput.click());
+
+  uploadInput.addEventListener("change", async () => {
+    const file = uploadInput.files[0];
+    if (!file) return;
+
+    uploadedText = null;
+    uploadedFilename = null;
+    uploadStatus.classList.remove("upload-status--error");
+    uploadStatus.textContent = `Analyse de « ${file.name} »…`;
+    uploadBtn.disabled = true;
+    try {
+      const res = await Api.extractUpload(file);
+      uploadedText = res.text || null;
+      uploadedFilename = uploadedText ? file.name : null;
+      uploadStatus.textContent = uploadedText
+        ? `« ${file.name} » prêt à être utilisé.`
+        : `« ${file.name} » n'a fourni aucun texte exploitable.`;
+    } catch (err) {
+      uploadStatus.classList.add("upload-status--error");
+      uploadStatus.textContent = `Échec de l'analyse : ${err.message}`;
+    } finally {
+      uploadBtn.disabled = false;
+    }
+  });
 
   createBtn.addEventListener("click", async () => {
     errorEl.textContent = "";
     createBtn.disabled = true;
     try {
       const res = await Api.createSession("Nouvelle session VibeCode");
-      onCreate(res); // { session_id, user_id, status, system_ws_url }
+      onCreate({ ...res, uploadedText, uploadedFilename });
     } catch (err) {
       errorEl.textContent = `Impossible de créer la session : ${err.message}`;
     } finally {

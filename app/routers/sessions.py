@@ -4,7 +4,7 @@ Real-time collaboration itself happens over WebSockets (see ws.py); these
 endpoints handle creation/joining and let the frontend fetch snapshots.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.models.schemas import (
     CreateSessionRequest,
@@ -17,7 +17,9 @@ from app.services import (
     file_service,
     lock_service,
     session_service,
+    upload_service,
 )
+from app.services.mistral_service import MistralError
 from app.utils.serialization import serialize
 
 router = APIRouter(prefix="/api", tags=["sessions"])
@@ -104,3 +106,17 @@ async def get_file(session_id: str, file_id: str):
 async def get_locks(session_id: str):
     locks = await lock_service.list_active_locks(session_id)
     return serialize(locks)
+
+
+@router.post("/uploads/extract")
+async def extract_upload(file: UploadFile = File(...)):
+    """Extract text from an uploaded .txt/.pdf/audio file (no persistence)."""
+    data = await file.read()
+    try:
+        return await upload_service.extract_text(file.filename or "", file.content_type, data)
+    except upload_service.UploadTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except MistralError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

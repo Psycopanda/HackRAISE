@@ -1,2 +1,13 @@
-test.py
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
 .env
+*.log
+logs/
+.DS_Store
+.idea/
+.mypy_cache/
+.pytest_cache/

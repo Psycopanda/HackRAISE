@@ -12,6 +12,7 @@ import {
   bindComposer,
   setTyping,
   copyToClipboard,
+  toast,
 } from "./ui.js";
 
 export function initCreate({ onEnterWorkspace, onBack }) {
@@ -19,6 +20,8 @@ export function initCreate({ onEnterWorkspace, onBack }) {
   const status = qs("#create-status");
   const composer = qs("#form-create-chat");
   const input = qs("#create-input");
+  const attachBtn = qs("#btn-create-attach");
+  const attachInput = qs("#create-input-upload");
   const pinPanel = qs("#pin-panel");
   const pinValue = qs("#pin-value");
   const pinSummary = qs("#pin-summary");
@@ -30,14 +33,34 @@ export function initCreate({ onEnterWorkspace, onBack }) {
   let socket = null;
   let pin = null;
 
-  const composerCtl = bindComposer(input, (text) => {
-    appendChat(messages, { role: "user", sender: "Vous", text });
+  function sendMessage(text, displayText) {
+    appendChat(messages, { role: "user", sender: "Vous", text: displayText || text });
     socket?.send(OUT.chat(text, "Vous"));
     setTyping(status, true);
-  });
+  }
+
+  const composerCtl = bindComposer(input, sendMessage);
   composer.addEventListener("submit", (event) => {
     event.preventDefault();
     composerCtl.submit();
+  });
+
+  attachBtn.addEventListener("click", () => attachInput.click());
+  attachInput.addEventListener("change", async () => {
+    const file = attachInput.files[0];
+    attachInput.value = "";
+    if (!file) return;
+
+    attachBtn.disabled = true;
+    try {
+      const res = await Api.extractUpload(file);
+      if (res.text) sendMessage(res.text, `📎 ${file.name}`);
+      else toast(`« ${file.name} » n'a fourni aucun texte exploitable.`);
+    } catch (err) {
+      toast(`Échec de l'analyse de « ${file.name} » : ${err.message}`);
+    } finally {
+      attachBtn.disabled = false;
+    }
   });
 
   backBtn.addEventListener("click", () => {
@@ -72,13 +95,22 @@ export function initCreate({ onEnterWorkspace, onBack }) {
     }
   });
 
-  function start({ system_ws_url }) {
+  function start({ system_ws_url, uploadedText, uploadedFilename }) {
     reset();
     showView("view-create");
     socket = new Socket(`${WS_BASE}${system_ws_url}`, { reconnect: false });
+    if (uploadedText) {
+      const displayText = uploadedFilename ? `📎 ${uploadedFilename}` : undefined;
+      socket.on("open", () => sendMessage(uploadedText, displayText));
+    }
     socket.on("system_message", (m) => {
       setTyping(status, false);
-      appendChat(messages, { role: "agent", sender: "Agent système", text: m.content });
+      appendChat(messages, {
+        role: "agent",
+        sender: "Agent système",
+        text: m.content,
+        markdown: true,
+      });
     });
     socket.on("agent_status", () => setTyping(status, true));
     socket.on("master_context_ready", (m) => onReady(m));

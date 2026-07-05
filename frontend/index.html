@@ -25,6 +25,14 @@
           Créer une nouvelle session
         </button>
 
+        <div class="upload-field">
+          <input type="file" id="input-upload" accept=".txt,.pdf,audio/*" hidden />
+          <button type="button" id="btn-upload" class="btn btn--ghost btn--block">
+            Joindre un document (optionnel)
+          </button>
+          <span id="upload-status" class="upload-status"></span>
+        </div>
+
         <div class="divider"><span>ou</span></div>
 
         <form id="form-join" class="join" novalidate>
@@ -102,6 +110,14 @@
         </div>
 
         <form id="form-create-chat" class="composer">
+          <input type="file" id="create-input-upload" accept=".txt,.pdf,audio/*" hidden />
+          <button
+            type="button"
+            id="btn-create-attach"
+            class="composer__attach"
+            title="Joindre un fichier (.txt, .pdf, audio)"
+            aria-label="Joindre un fichier"
+          >📎</button>
           <textarea
             id="create-input"
             class="composer__input"

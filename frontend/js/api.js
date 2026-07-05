@@ -2,6 +2,19 @@
 
 import { HTTP_BASE } from "./config.js";
 
+async function throwForStatus(res) {
+  let detail = `${res.status} ${res.statusText}`;
+  try {
+    const data = await res.json();
+    if (data && data.detail) detail = data.detail;
+  } catch (_) {
+    /* ignore non-JSON error bodies */
+  }
+  const error = new Error(detail);
+  error.status = res.status;
+  throw error;
+}
+
 async function request(path, { method = "GET", body } = {}) {
   const res = await fetch(`${HTTP_BASE}${path}`, {
     method,
@@ -9,18 +22,7 @@ async function request(path, { method = "GET", body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (!res.ok) {
-    let detail = `${res.status} ${res.statusText}`;
-    try {
-      const data = await res.json();
-      if (data && data.detail) detail = data.detail;
-    } catch (_) {
-      /* ignore non-JSON error bodies */
-    }
-    const error = new Error(detail);
-    error.status = res.status;
-    throw error;
-  }
+  if (!res.ok) await throwForStatus(res);
   return res.json();
 }
 
@@ -37,4 +39,15 @@ export const Api = {
   getContext: (sessionId) => request(`/api/sessions/${sessionId}/context`),
   getFiles: (sessionId) => request(`/api/sessions/${sessionId}/files`),
   health: () => request("/api/health"),
+
+  extractUpload: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${HTTP_BASE}/api/uploads/extract`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) await throwForStatus(res);
+    return res.json();
+  },
 };

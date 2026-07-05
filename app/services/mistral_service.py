@@ -79,6 +79,41 @@ class MistralService:
         except httpx.HTTPError as exc:
             raise MistralError(f"Erreur réseau vers Mistral: {exc}") from exc
 
+    async def transcribe_audio(
+        self,
+        file_bytes: bytes,
+        filename: str,
+        content_type: Optional[str] = None,
+        model: str = "voxtral-mini-latest",
+    ) -> str:
+        """Transcribe an audio file via Mistral's audio/transcriptions endpoint."""
+        if not self.is_configured:
+            raise MistralConfigError(
+                "La clé MISTRAL_API_KEY n'est pas configurée. "
+                "Ajoute-la dans le fichier .env pour activer les agents IA."
+            )
+
+        headers = {"Authorization": f"Bearer {self._api_key}"}
+        files = {"file": (filename, file_bytes, content_type or "application/octet-stream")}
+        data = {"model": model}
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{self._base_url}/audio/transcriptions",
+                    files=files,
+                    data=data,
+                    headers=headers,
+                )
+                response.raise_for_status()
+                return (response.json().get("text") or "").strip()
+        except httpx.HTTPStatusError as exc:
+            raise MistralError(
+                f"Erreur API Mistral ({exc.response.status_code}): {exc.response.text}"
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise MistralError(f"Erreur réseau vers Mistral: {exc}") from exc
+
     @staticmethod
     def first_message(response: dict) -> dict:
         choices = response.get("choices") or []
