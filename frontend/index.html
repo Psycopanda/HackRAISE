@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VibeCode</title>
+    <title>CoVibe</title>
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
@@ -14,8 +14,8 @@
     <section id="view-home" class="view view--center">
       <div class="home-card">
         <div class="brand">
-          <div class="brand__logo" aria-hidden="true">VC</div>
-          <h1 class="brand__title">VibeCode</h1>
+          <div class="brand__logo" aria-hidden="true">CV</div>
+          <h1 class="brand__title">CoVibe</h1>
           <p class="brand__subtitle">
             Collaboration en temps réel — humains et agents IA.
           </p>
@@ -67,7 +67,7 @@
           <p id="join-error" class="form-error" role="alert"></p>
         </form>
       </div>
-      <footer class="home-footer">VibeCode · Hackathon</footer>
+      <footer class="home-footer">CoVibe · Hackathon</footer>
     </section>
 
     <!-- ======================= VIEW: CREATE SESSION ====================== -->
@@ -135,13 +135,15 @@
         <!-- Top bar: session code, available anytime to invite collaborators -->
         <div class="ws-topbar">
           <div class="ws-topbar__left">
-            <span class="ws-logo">VibeCode</span>
+            <span class="ws-logo">CoVibe</span>
             <span class="ws-title" id="ws-title"></span>
           </div>
           <div class="ws-topbar__right">
             <span class="ws-code-label">Code&nbsp;:</span>
             <code class="ws-code" id="ws-code">------</code>
             <button class="btn btn--ghost btn--sm" id="btn-copy-code">Copier &amp; inviter</button>
+            <button class="btn btn--ghost btn--sm" id="btn-local-preview">Aperçu local</button>
+            <button class="btn btn--ghost btn--sm" id="btn-github-export">Exporter vers GitHub</button>
           </div>
         </div>
 
@@ -209,11 +211,12 @@
               <span></span><span></span><span></span>
             </div>
             <form id="form-workspace-chat" class="composer">
+              <div id="slash-menu" class="slash-menu hidden"></div>
               <textarea
                 id="workspace-input"
                 class="composer__input"
                 rows="1"
-                placeholder="Parlez à votre agent…"
+                placeholder="Parlez à votre agent… (tapez / pour les commandes)"
               ></textarea>
               <button type="submit" class="composer__send" title="Envoyer" aria-label="Envoyer">↑</button>
             </form>

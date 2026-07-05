@@ -8,6 +8,7 @@ everyone; on reject, it is discarded.
 """
 
 import logging
+import re
 
 from app.agents.prompts import MODIFICATION_SYSTEM_PROMPT
 from app.services import context_service, file_service, lock_service, proposal_service
@@ -277,6 +278,17 @@ async def resolve_proposal(session: dict, user: dict, task_id: str, decision: st
 
 # --- Helpers --------------------------------------------------------------
 
+# The model is instructed not to wrap file content in a code fence, but it
+# occasionally does anyway; strip a single leading/trailing ``` fence if the
+# whole response is wrapped in one.
+_CODE_FENCE_RE = re.compile(r"^```[a-zA-Z0-9_+-]*\n(.*?)\n?```$", re.DOTALL)
+
+
+def _strip_code_fence(text: str) -> str:
+    match = _CODE_FENCE_RE.match(text.strip())
+    return match.group(1) if match else text
+
+
 async def _generate_content(file_hint, instructions, task_description, context) -> str:
     mistral = get_mistral_service()
     master = (context or {}).get("master_context", {})
@@ -295,7 +307,8 @@ async def _generate_content(file_hint, instructions, task_description, context) 
         {"role": "system", "content": MODIFICATION_SYSTEM_PROMPT},
         {"role": "user", "content": user_prompt},
     ]
-    return await mistral.generate_text(messages, temperature=0.4)
+    content = await mistral.generate_text(messages, temperature=0.4)
+    return _strip_code_fence(content)
 
 
 async def _apply_proposed(session_id, file_id, new_content, user_id, attempts: int = 5):

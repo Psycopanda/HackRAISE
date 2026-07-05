@@ -1,6 +1,6 @@
 """Pydantic request/response and domain schemas."""
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,6 +28,11 @@ class JoinSessionResponse(BaseModel):
     title: str
     status: str
     session_ws_url: str
+
+
+class GitHubExportRequest(BaseModel):
+    visibility: Literal["private", "public"] = "private"
+    add_pages_workflow: bool = False
 
 
 class MasterContext(BaseModel):

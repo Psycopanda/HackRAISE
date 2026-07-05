@@ -46,7 +46,7 @@ export function initHome({ onCreate, onJoined }) {
     errorEl.textContent = "";
     createBtn.disabled = true;
     try {
-      const res = await Api.createSession("Nouvelle session VibeCode");
+      const res = await Api.createSession("Nouvelle session CoVibe");
       onCreate({ ...res, uploadedText, uploadedFilename });
     } catch (err) {
       errorEl.textContent = `Impossible de créer la session : ${err.message}`;

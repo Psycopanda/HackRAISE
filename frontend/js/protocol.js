@@ -1,4 +1,4 @@
-// Standardised message envelope for VibeCode.
+// Standardised message envelope for CoVibe.
 //
 // Application-level model: every message is an object of the form
 //     { type, sender, content, ... }

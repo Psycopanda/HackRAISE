@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     lock_lease_seconds: int = 120
     cors_origins: str = "*"
 
+    # ---- GitHub export ----
+    # No token is stored here: the `gh` CLI must already be authenticated
+    # (`gh auth login`) on the machine hosting the backend.
+    github_default_visibility: str = "private"
+
     @property
     def mongo_uri(self) -> str:
         """Build the MongoDB Atlas URI with URL-encoded credentials."""

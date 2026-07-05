@@ -57,6 +57,14 @@ async def get_session(session_id) -> Optional[dict]:
     return await sessions_col().find_one({"_id": to_object_id(session_id)})
 
 
+async def set_github_repo(session_id, repo_full_name: str, html_url: str) -> None:
+    """Remember which GitHub repo a session was exported to (for idempotent re-export)."""
+    await sessions_col().update_one(
+        {"_id": to_object_id(session_id)},
+        {"$set": {"github_repo": {"full_name": repo_full_name, "html_url": html_url}}},
+    )
+
+
 async def get_session_by_code(access_code: str) -> Optional[dict]:
     return await sessions_col().find_one({"access_code": access_code.strip().upper()})
 

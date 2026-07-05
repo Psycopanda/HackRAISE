@@ -164,17 +164,21 @@ async def resolve_path_targets(session_id, path: str):
     return False, []
 
 
-def format_file_tree(files: list) -> str:
-    """Render the session's files as an indented tree (arborescence).
+def split_path(name: str) -> list[str]:
+    """Split a ``/``-delimited file name into non-empty path parts."""
+    return [part for part in str(name).strip().split("/") if part]
+
+
+def build_file_tree(files: list) -> dict:
+    """Build a nested dict tree from a list of file documents.
 
     Names use ``/`` as a separator. Internal ``.keep`` folder placeholders are
     hidden, but the folders they materialise are kept so empty folders still
-    appear. Returns a human/agent-readable outline of the current structure.
+    appear. A file leaf is represented as ``None``; a folder as a nested dict.
     """
     root: dict = {}
     for document in files:
-        name = str(document.get("name", "")).strip()
-        parts = [part for part in name.split("/") if part]
+        parts = split_path(document.get("name", ""))
         if not parts:
             continue
         node = root
@@ -188,6 +192,15 @@ def format_file_tree(files: list) -> str:
         if leaf == ".keep":
             continue  # folder placeholder: its parent is already materialised
         node.setdefault(leaf, None)  # None marks a file leaf
+    return root
+
+
+def format_file_tree(files: list) -> str:
+    """Render the session's files as an indented tree (arborescence).
+
+    Returns a human/agent-readable outline of the current structure.
+    """
+    root = build_file_tree(files)
 
     if not root:
         return "(aucun fichier)"

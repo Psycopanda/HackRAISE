@@ -38,6 +38,47 @@ const JS_BUILTINS = new Set([
   "String", "Number", "Boolean", "Promise", "Map", "Set", "Symbol",
 ]);
 
+const BASH_KEYWORDS = new Set([
+  "if", "then", "else", "elif", "fi", "for", "while", "until", "do", "done",
+  "case", "esac", "function", "return", "in", "select", "time",
+]);
+const BASH_BUILTINS = new Set([
+  "echo", "export", "cd", "pwd", "source", "alias", "unset", "read", "exit",
+  "set", "shift", "trap", "local", "declare", "printf", "test", "sudo",
+  "grep", "sed", "awk", "curl", "wget", "chmod", "chown", "mkdir", "rm", "cp",
+  "mv", "ls", "cat", "npm", "npx", "uv", "pip", "python", "git", "docker",
+]);
+
+// SQL keywords are matched case-insensitively, so the set is lowercase.
+const SQL_KEYWORDS = new Set([
+  "select", "from", "where", "insert", "into", "values", "update", "set",
+  "delete", "create", "table", "drop", "alter", "join", "inner", "left",
+  "right", "outer", "on", "and", "or", "not", "null", "as", "group", "by",
+  "order", "having", "limit", "offset", "distinct", "union", "index",
+  "primary", "key", "foreign", "references", "default", "exists", "in",
+  "like", "between", "case", "when", "then", "end", "asc", "desc",
+]);
+const SQL_BUILTINS = new Set([
+  "count", "sum", "avg", "min", "max", "coalesce", "now",
+]);
+
+const CLIKE_KEYWORDS = new Set([
+  "class", "public", "private", "protected", "static", "void", "int",
+  "float", "double", "char", "bool", "boolean", "struct", "enum",
+  "interface", "extends", "implements", "namespace", "using", "include",
+  "define", "func", "fn", "return", "if", "else", "for", "while", "switch",
+  "case", "break", "continue", "new", "delete", "const", "var", "let",
+  "package", "import", "throws", "throw", "try", "catch", "finally", "final",
+  "abstract", "override", "virtual", "template", "typename", "mut", "impl",
+  "trait", "pub", "unsafe",
+]);
+const CLIKE_BUILTINS = new Set([
+  "this", "self", "super", "true", "false", "null", "nullptr", "None",
+  "System", "String", "std",
+]);
+
+const JSON_KEYWORDS = new Set(["true", "false", "null"]);
+
 const EMPTY = new Set();
 
 // Each rule pairs a *sticky* regex (matches only at lastIndex) with a token
@@ -61,6 +102,41 @@ const RULES = {
     },
     { cls: "number", re: /\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?n?/y },
   ],
+  bash: [
+    { cls: "comment", re: /#[^\n]*/y },
+    { cls: "string", re: /(?:"(?:\\.|[^"\\\n])*"|'[^'\n]*')/y },
+    { cls: "decorator", re: /\$\{?\w+\}?/y },
+    { cls: "number", re: /\d[\d_]*/y },
+  ],
+  sql: [
+    { cls: "comment", re: /(?:--[^\n]*|\/\*[\s\S]*?\*\/)/y },
+    { cls: "string", re: /'(?:''|[^'])*'/y },
+    { cls: "number", re: /\d[\d_]*(?:\.\d+)?/y },
+  ],
+  clike: [
+    { cls: "comment", re: /(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/)/y },
+    {
+      cls: "string",
+      re: /(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')/y,
+    },
+    { cls: "decorator", re: /@[A-Za-z_][\w.]*/y },
+    { cls: "number", re: /\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?[fFlLuU]*/y },
+  ],
+  json: [
+    { cls: "string", re: /"(?:\\.|[^"\\\n])*"/y },
+    { cls: "number", re: /-?\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?/y },
+  ],
+  css: [
+    { cls: "comment", re: /\/\*[\s\S]*?\*\//y },
+    { cls: "string", re: /(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')/y },
+    { cls: "decorator", re: /@[A-Za-z-]+/y },
+    { cls: "number", re: /#[0-9a-fA-F]{3,8}\b|\d[\d.]*(?:%|[a-z]{1,4})?/y },
+  ],
+  html: [
+    { cls: "comment", re: /<!--[\s\S]*?-->/y },
+    { cls: "string", re: /(?:"[^"\n]*"|'[^'\n]*')/y },
+    { cls: "tag", re: /<\/?[A-Za-z][\w:-]*/y },
+  ],
   generic: [
     { cls: "comment", re: /(?:#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)/y },
     {
@@ -76,14 +152,66 @@ const WORD_RE = /[A-Za-z_$][\w$]*/y;
 function pickKind(language) {
   const raw = String(language || "").toLowerCase().trim();
   const value = raw.includes(".") ? raw.slice(raw.lastIndexOf(".") + 1) : raw;
+  // Explicit "no highlighting" markers: respect them instead of autodetecting.
+  if (["text", "txt", "plain", "plaintext", "none"].includes(value)) return "generic";
   if (value === "python" || value === "py") return "python";
   if (["js", "javascript", "jsx", "mjs", "cjs", "node", "ts", "typescript", "tsx"].includes(value)) {
     return "js";
   }
+  if (["sh", "shell", "bash", "zsh", "console", "terminal"].includes(value)) return "bash";
+  if (["sql", "mysql", "postgresql", "plpgsql", "sqlite"].includes(value)) return "sql";
+  if (["json", "json5", "jsonc"].includes(value)) return "json";
+  if (["css", "scss", "sass", "less"].includes(value)) return "css";
+  if (["html", "htm", "xml", "svg", "vue"].includes(value)) return "html";
+  if ([
+    "java", "c", "cpp", "cxx", "cc", "h", "hpp", "csharp", "cs", "go",
+    "golang", "rust", "rs", "kotlin", "kt", "swift", "php", "dart",
+  ].includes(value)) {
+    return "clike";
+  }
+  return null;
+}
+
+// Best-effort language guess from the raw code, used when no (or an
+// unrecognised) fence language is given. Cheap regex heuristics, not a real
+// parser — order matters, most specific/reliable checks come first.
+function detectLanguage(code) {
+  const src = code.trim();
+  if (!src) return "generic";
+
+  if (/^[[{]/.test(src)) {
+    try {
+      JSON.parse(src);
+      return "json";
+    } catch (_) {
+      /* not JSON */
+    }
+  }
+  if (/^<!doctype html/i.test(src) || /<\/?[a-z][\w-]*(\s[^>]*)?>/i.test(src)) {
+    return "html";
+  }
+  if (/^#!.*\b(bash|sh|zsh)\b/.test(src) || /^\s*(sudo|echo|export|cd|curl|chmod|apt-get)\s/m.test(src)) {
+    return "bash";
+  }
+  if (/\b(select\s+.+\s+from|insert\s+into|update\s+\w+\s+set|create\s+table|delete\s+from)\b/i.test(src)) {
+    return "sql";
+  }
+  if (/[.#]?[\w-]+(?:\s*,\s*[.#]?[\w-]+)*\s*\{[^{}]*:[^{}]*;[^{}]*\}/.test(src) && !/=>|function\s|def\s/.test(src)) {
+    return "css";
+  }
+  if (/\bdef\s+\w+\s*\(.*\)\s*:|^\s*(import|from)\s+\w|:\s*$/m.test(src)) {
+    return "python";
+  }
+  if (/\b(function\s*\w*\s*\(|const\s+\w+\s*=|let\s+\w+\s*=|=>|console\.log)\b/.test(src)) {
+    return "js";
+  }
+  if (/#include\s*[<"]|public\s+(class|static)|int\s+main\s*\(|\bfn\s+\w+\s*\(|\bfunc\s+\w+\s*\(/.test(src)) {
+    return "clike";
+  }
   return "generic";
 }
 
-function scan(code, rules, keywords, builtins) {
+function scan(code, rules, keywords, builtins, caseInsensitive = false) {
   const out = [];
   let i = 0;
   const n = code.length;
@@ -106,9 +234,10 @@ function scan(code, rules, keywords, builtins) {
     const wm = WORD_RE.exec(code);
     if (wm) {
       const word = wm[0];
+      const key = caseInsensitive ? word.toLowerCase() : word;
       let cls = null;
-      if (keywords.has(word)) cls = "keyword";
-      else if (builtins.has(word)) cls = "builtin";
+      if (keywords.has(key)) cls = "keyword";
+      else if (builtins.has(key)) cls = "builtin";
       else {
         let j = WORD_RE.lastIndex;
         while (j < n && (code[j] === " " || code[j] === "\t")) j++;
@@ -125,20 +254,37 @@ function scan(code, rules, keywords, builtins) {
   return out.join("");
 }
 
+const KEYWORDS_BY_KIND = {
+  python: PY_KEYWORDS,
+  js: JS_KEYWORDS,
+  bash: BASH_KEYWORDS,
+  sql: SQL_KEYWORDS,
+  clike: CLIKE_KEYWORDS,
+  json: JSON_KEYWORDS,
+};
+const BUILTINS_BY_KIND = {
+  python: PY_BUILTINS,
+  js: JS_BUILTINS,
+  bash: BASH_BUILTINS,
+  sql: SQL_BUILTINS,
+  clike: CLIKE_BUILTINS,
+};
+
 /**
  * Highlight source code and return safe HTML (tokens wrapped in spans).
  * @param {string} code
  * @param {string} language  a language id ("python") or a file name ("app.py").
+ *   When omitted or unrecognised, the language is auto-detected from `code`.
  */
 export function highlightCode(code, language) {
   const src = code == null ? "" : String(code);
   // Guard against pathological cost on very large buffers.
   if (src.length > 60000) return escapeHtml(src);
-  const kind = pickKind(language);
-  const rules = RULES[kind];
-  const keywords = kind === "python" ? PY_KEYWORDS : kind === "js" ? JS_KEYWORDS : EMPTY;
-  const builtins = kind === "python" ? PY_BUILTINS : kind === "js" ? JS_BUILTINS : EMPTY;
-  return scan(src, rules, keywords, builtins);
+  const kind = pickKind(language) || detectLanguage(src);
+  const rules = RULES[kind] || RULES.generic;
+  const keywords = KEYWORDS_BY_KIND[kind] || EMPTY;
+  const builtins = BUILTINS_BY_KIND[kind] || EMPTY;
+  return scan(src, rules, keywords, builtins, kind === "sql");
 }
 
 /** Wrap highlighted code in a <pre><code> block ready to inject. */

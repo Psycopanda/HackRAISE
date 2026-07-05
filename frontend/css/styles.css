@@ -1,5 +1,5 @@
 /* ============================================================================
-   VibeCode — minimalist, ChatGPT-inspired styling.
+   CoVibe — minimalist, ChatGPT-inspired styling.
    Palette: white background, gray separators/secondary areas, near-black text.
    ========================================================================== */
 
@@ -420,12 +420,53 @@ body {
 /* -------------------------------- Composer ------------------------------- */
 
 .composer {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 8px;
   padding: 14px 16px;
   border-top: 1px solid var(--border);
   background: #fff;
+}
+.slash-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  right: 16px;
+  z-index: 20;
+  margin-bottom: 6px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.slash-menu__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+.slash-menu__item-label {
+  font-weight: 600;
+}
+.slash-menu__item-desc {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+.slash-menu__item:hover,
+.slash-menu__item--active {
+  background: var(--bg-subtle);
 }
 .composer__input {
   flex: 1;
@@ -999,6 +1040,9 @@ body.resizing {
 }
 .tok-decorator {
   color: #c18401;
+}
+.tok-tag {
+  color: #e45649;
 }
 .tok-comment {
   color: #9ca0ab;

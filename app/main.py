@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.database import close_mongo_connection, connect_to_mongo
 from app.logging_config import configure_logging
 from app.routers import sessions, ws
+from app.services import preview_service
 
 configure_logging()
 
@@ -28,6 +29,7 @@ async def lifespan(_: FastAPI):
             exc,
         )
     yield
+    await preview_service.stop_all_previews()
     await close_mongo_connection()
 
 

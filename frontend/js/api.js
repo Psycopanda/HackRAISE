@@ -40,6 +40,17 @@ export const Api = {
   getFiles: (sessionId) => request(`/api/sessions/${sessionId}/files`),
   health: () => request("/api/health"),
 
+  startPreview: (sessionId) =>
+    request(`/api/sessions/${sessionId}/preview`, { method: "POST" }),
+  stopPreview: (sessionId) =>
+    request(`/api/sessions/${sessionId}/preview`, { method: "DELETE" }),
+
+  exportToGithub: (sessionId, { visibility = "private", addPagesWorkflow = false } = {}) =>
+    request(`/api/sessions/${sessionId}/export/github`, {
+      method: "POST",
+      body: { visibility, add_pages_workflow: addPagesWorkflow },
+    }),
+
   extractUpload: async (file) => {
     const formData = new FormData();
     formData.append("file", file);

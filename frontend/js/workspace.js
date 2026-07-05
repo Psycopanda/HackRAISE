@@ -7,6 +7,7 @@ import { Socket } from "./socket.js";
 import { WS_BASE } from "./config.js";
 import { OUT, agentIdFor } from "./protocol.js";
 import { CollaborativeEditor } from "./editor.js";
+import { Api } from "./api.js";
 import { initResizer } from "./resizer.js";
 import { renderExplorer } from "./explorer.js";
 import { renderMarkdown } from "./markdown.js";
@@ -21,6 +22,7 @@ import {
   setTyping,
   toast,
   copyToClipboard,
+  autoGrow,
 } from "./ui.js";
 
 export function initWorkspace() {
@@ -60,12 +62,15 @@ export function initWorkspace() {
   const codeEl = qs("#ws-code");
   const titleEl = qs("#ws-title");
   const copyCodeBtn = qs("#btn-copy-code");
+  const localPreviewBtn = qs("#btn-local-preview");
+  const githubExportBtn = qs("#btn-github-export");
 
   let socket = null;
   let myAgentId = null;
   let myUserId = null;
   let pseudo = null;
   let accessCode = null;
+  let sessionId = null;
   let previewMode = false;
   let initialized = false;
   let pendingOpenName = null;
@@ -90,6 +95,106 @@ export function initWorkspace() {
   composer.addEventListener("submit", (event) => {
     event.preventDefault();
     composerCtl.submit();
+  });
+
+  // --- Slash commands (e.g. "/github" to export the project) ---
+  const slashMenuEl = qs("#slash-menu");
+  const SLASH_COMMANDS = [
+    {
+      id: "apercu",
+      label: "/apercu",
+      description: "Ouvrir un aperçu local du projet",
+      run: () => runLocalPreview(),
+    },
+    {
+      id: "github",
+      label: "/github",
+      description: "Exporter ce projet vers GitHub",
+      run: () => runGithubExport(),
+    },
+  ];
+  let slashMatches = [];
+  let slashActiveIndex = 0;
+
+  function closeSlashMenu() {
+    slashMatches = [];
+    slashMenuEl.classList.add("hidden");
+    slashMenuEl.innerHTML = "";
+  }
+
+  function renderSlashMenu() {
+    slashMenuEl.innerHTML = "";
+    slashMatches.forEach((cmd, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "slash-menu__item" + (i === slashActiveIndex ? " slash-menu__item--active" : "");
+      const label = document.createElement("span");
+      label.className = "slash-menu__item-label";
+      label.textContent = cmd.label;
+      const desc = document.createElement("span");
+      desc.className = "slash-menu__item-desc";
+      desc.textContent = cmd.description;
+      btn.append(label, desc);
+      btn.addEventListener("mousedown", (event) => {
+        event.preventDefault(); // keep focus in the textarea
+        selectSlashCommand(cmd);
+      });
+      slashMenuEl.appendChild(btn);
+    });
+    slashMenuEl.classList.toggle("hidden", slashMatches.length === 0);
+  }
+
+  function selectSlashCommand(cmd) {
+    input.value = "";
+    autoGrow(input);
+    closeSlashMenu();
+    cmd.run();
+  }
+
+  input.addEventListener("input", () => {
+    const match = /^\/(\S*)$/.exec(input.value);
+    if (!match) {
+      closeSlashMenu();
+      return;
+    }
+    const query = match[1].toLowerCase();
+    slashMatches = SLASH_COMMANDS.filter((cmd) => cmd.id.startsWith(query));
+    slashActiveIndex = 0;
+    renderSlashMenu();
+  });
+
+  // Capture phase: intercept before bindComposer's own keydown handler so
+  // Enter/Arrows navigate the menu instead of submitting the message.
+  input.addEventListener(
+    "keydown",
+    (event) => {
+      if (slashMatches.length === 0) return;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        event.stopPropagation();
+        slashActiveIndex = (slashActiveIndex + 1) % slashMatches.length;
+        renderSlashMenu();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        slashActiveIndex = (slashActiveIndex - 1 + slashMatches.length) % slashMatches.length;
+        renderSlashMenu();
+      } else if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        event.stopPropagation();
+        selectSlashCommand(slashMatches[slashActiveIndex]);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeSlashMenu();
+      }
+    },
+    { capture: true }
+  );
+
+  document.addEventListener("click", (event) => {
+    if (!composer.contains(event.target)) closeSlashMenu();
   });
 
   // --- "+" menu (new file / folder) ---
@@ -145,6 +250,46 @@ export function initWorkspace() {
     }
   });
 
+  localPreviewBtn.addEventListener("click", () => runLocalPreview());
+
+  async function runLocalPreview() {
+    if (!sessionId) return;
+    localPreviewBtn.disabled = true;
+    try {
+      const result = await Api.startPreview(sessionId);
+      if (result.servable) {
+        window.open(result.url, "_blank");
+      } else {
+        toast(result.message || "Aperçu local indisponible pour ce projet.");
+      }
+    } catch (err) {
+      toast(`Aperçu impossible : ${err.message}`);
+    } finally {
+      localPreviewBtn.disabled = false;
+    }
+  }
+
+  githubExportBtn.addEventListener("click", () => runGithubExport());
+
+  async function runGithubExport() {
+    if (!sessionId) return;
+    githubExportBtn.disabled = true;
+    githubExportBtn.textContent = "Export en cours…";
+    try {
+      const result = await Api.exportToGithub(sessionId, {
+        visibility: "private",
+        addPagesWorkflow: true,
+      });
+      await copyToClipboard(result.repo_url);
+      toast(`Poussé sur ${result.repo_url} (lien copié).`);
+    } catch (err) {
+      toast(`Export GitHub impossible : ${err.message}`);
+    } finally {
+      githubExportBtn.disabled = false;
+      githubExportBtn.textContent = "Exporter vers GitHub";
+    }
+  }
+
   // --- Change-review actions ---
   proposalApplyBtn.addEventListener("click", () => resolveActive("apply"));
   proposalRejectBtn.addEventListener("click", () => resolveActive("reject"));
@@ -161,6 +306,7 @@ export function initWorkspace() {
   // --- Lifecycle ---
   function start(joinResult) {
     pseudo = joinResult.pseudo;
+    sessionId = joinResult.session_id;
     myUserId = joinResult.user_id;
     myAgentId = agentIdFor(joinResult.user_id);
     messages.innerHTML = "";
